@@ -33,7 +33,7 @@ from pathlib import Path
 
 HARNESS_DIR = Path(__file__).parent
 BUNDLED_CLI = (
-    HARNESS_DIR.parent
+    HARNESS_DIR.parent.parent.parent
     / "venv"
     / "lib"
     / "python3.12"
