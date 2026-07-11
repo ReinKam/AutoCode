@@ -60,7 +60,7 @@ jobs:
       - name: Verify bundled CLI hash matches admission_note.md
         run: |
           BUNDLED="venv/lib/python3.12/site-packages/claude_agent_sdk/_bundled/claude"
-          EXPECTED="85e7e988a392d859f90802ca21fb26e89d3c9ab527f5ed0b08df3955e34d5c8"
+          EXPECTED="85e7e988a392d859f90802ca21fb26e89d3c9ab527f5ed0b08df3955e34d5c83"
           if [ ! -f "$BUNDLED" ]; then
             echo "No bundled CLI found at $BUNDLED — cannot verify identity."
             exit 1

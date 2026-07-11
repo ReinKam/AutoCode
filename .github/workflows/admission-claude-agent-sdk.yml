@@ -43,7 +43,7 @@ jobs:
             exit 1
           fi
           BUNDLED="venv/lib/python3.12/site-packages/claude_agent_sdk/_bundled/claude"
-          EXPECTED="85e7e988a392d859f90802ca21fb26e89d3c9ab527f5ed0b08df3955e34d5c8"
+          EXPECTED="85e7e988a392d859f90802ca21fb26e89d3c9ab527f5ed0b08df3955e34d5c83"
           ACTUAL=$(sha256sum "$BUNDLED" | awk '{print $1}')
           if [ "$ACTUAL" != "$EXPECTED" ]; then
             echo "Bundled CLI SHA-256 mismatch ($ACTUAL != $EXPECTED). Refusing to run."

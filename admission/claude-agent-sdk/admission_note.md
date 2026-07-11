@@ -26,7 +26,7 @@ CLI resolution:     BUNDLED — shipped inside the claude-agent-sdk pip package
                      mismatch between a global npm install and the bundled
                      copy would silently use the bundled one unless
                      `cli_path` is passed explicitly.
-CLI binary SHA-256:  85e7e988a392d859f90802ca21fb26e89d3c9ab527f5ed0b08df3955e34d5c8
+CLI binary SHA-256:  85e7e988a392d859f90802ca21fb26e89d3c9ab527f5ed0b08df3955e34d5c83
 CLI binary size:      259402552 bytes
 
 Runtime pinning strategy: harness/ passes ClaudeAgentOptions(cli_path=...)
