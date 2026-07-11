@@ -223,3 +223,52 @@ picture is updated.
 3. At the end of the session: update this file's "Current state" and
    "Next milestone" sections, commit it, and (if a new stable point is
    reached) tag it — same discipline as `v0.1-mvp`.
+
+## Parked ADR 0002 admission candidates
+
+Not yet evaluated, not yet used as an execution backend, registered here
+so the question doesn't get re-raised from scratch in a future chat:
+
+- **OpenClaw.** Structurally fits the "execution backend" role (it
+  already created the original, pre-rename `AutoCode` repo, outside any
+  governance process). Its own security documentation states its default
+  model plainly: *"the agent can do anything you can do"* — permissive by
+  default, hardened only through deliberate configuration (tool
+  allow/deny lists, sandbox vs. elevated exec, per-agent restrictions).
+  Independent security research (Trend Micro, Feb 2026) flags its
+  *unrestricted configurability without enforced checks* — not any single
+  capability — as the specific risk factor, and documents real incidents
+  (credential-harvesting skills published to its community marketplace).
+  This is a materially higher-risk starting posture than Claude Agent SDK
+  (default `canUseTool` gating, human-click-through before PR creation)
+  and higher-risk than what Preloop's *documentation* claimed before ADR
+  0002's source inspection found its actual fail-open gap — OpenClaw
+  states the permissive default openly, it isn't hidden in source.
+  **Before OpenClaw could be admitted as a trust-bearing execution
+  backend for AutoCode**, it needs the same treatment Claude Agent SDK
+  just went through: a pinned version, an explicit deny-by-default tool
+  policy (not the permissive default), sandboxing rather than "run as
+  me," and targeted failure-path tests — not just documentation review.
+  Parked, not rejected.
+
+## Claude Code as the interim execution backend for repo/git operations
+
+Agreed 2026-07-11: Claude Code (not this chat interface, which has no
+GitHub connector) handles routine git/GitHub operations directly in the
+user's own authenticated environment, replacing manual copy-paste of
+commands and diffs between chat and terminal. See `CLAUDE.md` at the repo
+root for the operating boundary this is subject to — summarized here:
+
+- **Mechanical / low-risk / reversible actions** (Job #1: reading files,
+  running read-only commands, committing changes already agreed in
+  conversation) — Claude Code may do these directly without a
+  confirmation round-trip for each one.
+- **Meaningful or irreversible actions** (Job #2, or high-stakes Job #1:
+  `git push` to `main`, changing secrets/environment protection rules,
+  triggering the paid, authenticated `admission-claude-agent-sdk.yml`
+  workflow, deleting anything) — these still require explicit, per-action
+  confirmation from the human, mirroring the same Job #1/#2 split already
+  designed into AutoCode's HIL-question redesign earlier in this project,
+  and consistent with Claude Code's own default behavior of never opening
+  a PR by itself (it commits to a branch and hands the human a link to
+  click).
