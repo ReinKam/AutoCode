@@ -1,0 +1,80 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile-check every Python file
+        run: |
+          python3 -m py_compile $(git ls-files '*.py')
+
+      - name: Run static Gate 0 test (0.10a) — no auth required
+        run: |
+          python3 admission/claude-agent-sdk/harness/test_0_10a_static_no_persisted_permissions.py
+
+      # Placeholder for when autocode/policy_engine's remaining modules and
+      # golden tests are migrated in — see README.md "Known gap". Do not
+      # remove this comment when adding real test invocations later; it is
+      # the reminder that this job intentionally does not yet run the
+      # golden suite because the suite isn't in this repo yet.
+      # - name: Run golden tests
+      #   run: bash run_all.sh
+
+  verify-pinned-sdk-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned claude-agent-sdk (no API calls made here)
+        run: |
+          python3 -m venv venv
+          ./venv/bin/pip install --upgrade pip -q
+          ./venv/bin/pip install claude-agent-sdk==0.2.116
+
+      - name: Verify installed version matches admission_note.md
+        run: |
+          INSTALLED=$(./venv/bin/pip show claude-agent-sdk | grep -i '^Version:' | awk '{print $2}')
+          if [ "$INSTALLED" != "0.2.116" ]; then
+            echo "Installed claude-agent-sdk version ($INSTALLED) does not match the pinned version (0.2.116) in admission_note.md"
+            exit 1
+          fi
+          echo "Pinned version confirmed: $INSTALLED"
+
+      - name: Verify bundled CLI hash matches admission_note.md
+        run: |
+          BUNDLED="venv/lib/python3.12/site-packages/claude_agent_sdk/_bundled/claude"
+          EXPECTED="85e7e988a392d859f90802ca21fb26e89d3c9ab527f5ed0b08df3955e34d5c8"
+          if [ ! -f "$BUNDLED" ]; then
+            echo "No bundled CLI found at $BUNDLED — cannot verify identity."
+            exit 1
+          fi
+          ACTUAL=$(sha256sum "$BUNDLED" | awk '{print $1}')
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "Bundled CLI SHA-256 mismatch."
+            echo "Expected: $EXPECTED"
+            echo "Actual:   $ACTUAL"
+            echo "This means the pinned SDK version now ships a different CLI binary than the one admission_note.md's Gate 0 evidence was collected against. Admission Gate 0 must be re-run before treating this SDK version as admitted."
+            exit 1
+          fi
+          echo "Bundled CLI SHA-256 confirmed: $ACTUAL"
+
+  # This job intentionally never runs the query()-driven tests (0.1-0.9,
+  # 0.10b): those require ANTHROPIC_API_KEY, and this workflow must never
+  # have access to that secret. See admission-claude-agent-sdk.yml.

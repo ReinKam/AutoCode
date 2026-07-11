@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Node (bundled/local CLI installs done during admission testing)
+node_modules/
+
+# Admission harness scratch output (raw run artifacts, not the sanitized
+# evidence that gets deliberately committed into admission_note.md / a
+# reviewed evidence file)
+admission/claude-agent-sdk/harness/_canary/
+/results.jsonl
+/run.log
+
+# OS
+.DS_Store

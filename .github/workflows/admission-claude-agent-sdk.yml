@@ -1,0 +1,106 @@
+name: admission-claude-agent-sdk
+
+# Manual-only. Never on push/pull_request/issues/issue_comment, and never
+# from forks -- this job authenticates to the Anthropic API and must not
+# be reachable by anyone who can merely open a PR against this repo.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: claude-sdk-admission
+  cancel-in-progress: false
+
+jobs:
+  gate0:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Environment secrets require approval from a required reviewer
+    # (configured in repo Settings -> Environments -> claude-sdk-admission)
+    # before this job can read ANTHROPIC_API_KEY. See README.md setup steps.
+    environment: claude-sdk-admission
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned claude-agent-sdk
+        run: |
+          python3 -m venv venv
+          ./venv/bin/pip install --upgrade pip -q
+          ./venv/bin/pip install claude-agent-sdk==0.2.116
+
+      - name: Verify pinned version and bundled CLI hash before running anything authenticated
+        run: |
+          INSTALLED=$(./venv/bin/pip show claude-agent-sdk | grep -i '^Version:' | awk '{print $2}')
+          if [ "$INSTALLED" != "0.2.116" ]; then
+            echo "Version mismatch: $INSTALLED != 0.2.116. Refusing to run authenticated tests against an unverified SDK version."
+            exit 1
+          fi
+          BUNDLED="venv/lib/python3.12/site-packages/claude_agent_sdk/_bundled/claude"
+          EXPECTED="85e7e988a392d859f90802ca21fb26e89d3c9ab527f5ed0b08df3955e34d5c8"
+          ACTUAL=$(sha256sum "$BUNDLED" | awk '{print $1}')
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "Bundled CLI SHA-256 mismatch ($ACTUAL != $EXPECTED). Refusing to run."
+            exit 1
+          fi
+          echo "SDK version and CLI hash verified. Proceeding."
+
+      - name: Run Admission Gate 0 target-tests (0.1-0.9, 0.10b)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set +e
+          mkdir -p evidence
+          for f in admission/claude-agent-sdk/harness/test_0_1_*.py \
+                   admission/claude-agent-sdk/harness/test_0_2_*.py \
+                   admission/claude-agent-sdk/harness/test_0_3_*.py \
+                   admission/claude-agent-sdk/harness/test_0_4_*.py \
+                   admission/claude-agent-sdk/harness/test_0_5_*.py \
+                   admission/claude-agent-sdk/harness/test_0_6_*.py \
+                   admission/claude-agent-sdk/harness/test_0_7_*.py \
+                   admission/claude-agent-sdk/harness/test_0_8_*.py \
+                   admission/claude-agent-sdk/harness/test_0_9_*.py \
+                   admission/claude-agent-sdk/harness/test_0_10b_*.py; do
+            echo "=== $f ===" | tee -a evidence/run.log
+            ./venv/bin/python3 "$f" >> evidence/results.jsonl 2>> evidence/run.log
+          done
+          # Always succeed at the job level so artifacts still upload even
+          # if an individual test's own assertions would fail -- pass/fail
+          # classification happens in review, not by breaking the build.
+          exit 0
+
+      - name: Record environment manifest alongside results
+        run: |
+          {
+            echo "{"
+            echo "  \"sdk_version\": \"0.2.116\","
+            echo "  \"cli_sha256\": \"$(sha256sum venv/lib/python3.12/site-packages/claude_agent_sdk/_bundled/claude | awk '{print $1}')\","
+            echo "  \"python_version\": \"$(python3 --version)\","
+            echo "  \"runner_os\": \"$(uname -srm)\","
+            echo "  \"workflow_run_id\": \"${{ github.run_id }}\","
+            echo "  \"commit_sha\": \"${{ github.sha }}\","
+            echo "  \"triggered_by\": \"${{ github.actor }}\","
+            echo "  \"timestamp_utc\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\""
+            echo "}"
+          } > evidence/environment.json
+
+      # Always upload, even on failure, per the admission spec: every
+      # observation is evidence, not just the passing ones.
+      - name: Upload raw evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate0-evidence-${{ github.run_id }}
+          path: evidence/
+          retention-days: 90
+
+  # This workflow does not, and must not, commit anything. A human reviews
+  # the uploaded artifact and commits a sanitized evidence file themselves,
+  # per README.md step 5 and ADR 0002's separation of evidence production
+  # from evidence approval.
