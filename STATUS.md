@@ -4,6 +4,19 @@
 file (or the whole repo) before continuing work, so context doesn't
 depend on chat memory.
 
+## Core invariant
+
+> **No execution without a valid `PolicyDecision`. Human approval is
+> required only when the policy decision itself requires HIL — a valid
+> `ALLOW` is not a missing approval; it *is* the decision.**
+
+This is the sentence to quote if a future session states the invariant
+loosely (e.g. "no action without policy *and* a human"). That looser
+phrasing is wrong: it would turn every low-risk `ALLOW` into a required
+human review, collapsing Job #1 into a generic approval queue instead of
+a risk filter. See ADR 0001 (fail-closed default) and the Job #1/#2
+distinction in `CLAUDE.md` for the reasoning this compresses.
+
 ## Current state
 
 - **Frozen reference point:** tag `v0.1-mvp`, commit `e0f3d36`
@@ -193,26 +206,59 @@ problem, not just whether it demonstrates deliberation mechanics.
 
 ## Next milestone
 
-**Claude Agent SDK as the real execution backend**, replacing the chat
-session in `listapp/_autocode/govern.py`.
+**MVP 2 — Claude Agent SDK as the real execution backend**, replacing
+the chat session in `listapp/_autocode/govern.py`. Sequencing agreed
+2026-07-11, after Admission Gate 0 completed:
 
-Agreed constraint for this step: **change exactly one variable.**
-Everything else (ruleset, `resolve()`, `match_rules()`, audit log,
-TTL/capability logic) stays identical. The only difference from v0.1-mvp
-should be *where the ActionProposal comes from* — a real `canUseTool`
-callback in an SDK session, instead of a manual `propose()` call in
-chat. This isolates the new component so results are easy to evaluate
-and trust (see `decisions/` for why this matters).
+1. ~~Freeze Gate 0 evidence~~ — **done.**
+   `admission/claude-agent-sdk/admission_note.md` records admission
+   status (`Admitted`), workflow run ID `29149642655`, commit SHA,
+   environment data, full per-test results, known limitations, and the
+   exact tested CLI binary hash.
+2. **Implement `sdk_governance.py`**:
+   - a universal `PreToolUse` hook (closes the auto-approval-bypass gap
+     documented in Gate 0 test 0.4 — allowed_tools/acceptEdits/
+     bypassPermissions must not skip governance)
+   - a `can_use_tool` callback mapping SDK tool-call input to
+     `govern.propose()`
+   - the HIL question surfaced there must ask about product intent
+     ("does this make sense for the product and the stated task"), not
+     implementation safety — see the Job #1/#2 distinction in
+     `CLAUDE.md`
+   - re-evaluation on HIL response, linked via `previous_decision_id`
+     (never silently extending a prior decision)
+   - a separate branch for `AskUserQuestion` (not AutoCode's HIL flow)
+   - never sets `updated_permissions`
+   - never modifies the tool input that was actually evaluated
+3. **Parameterize `proposed_by` in `govern.py`** — the SDK integration
+   passes `"claude-agent-sdk"` explicitly; no global overwrite of other
+   backends' identity (e.g. `"claude-chat-session-as-execution-backend"`
+   must still be derivable for anything still using that path).
+4. **Build one minimal vertical flow**, end to end:
+   - one `ALLOW` call, executed
+   - one `BLOCK_REQUIRE_HIL` call -> approval -> executed
+   - one HIL rejection -> zero execution
+   - one policy/callback failure -> zero execution
+5. **Run MVP 2 acceptance**:
+   - Gate 0 remains green (no SDK/CLI version or hash drift)
+   - existing golden tests unchanged
+   - every execution traceable to a prior `PolicyDecision`
+   - HIL lineage complete (`previous_decision_id` chain intact)
+   - execution happens at most once per approved action
+6. **Freeze `v0.2-mvp`**: clean commit, reproducible GitHub Actions run,
+   updated README/architecture description, explicit list of what's
+   demonstrated vs. not yet vs. future work — same discipline as
+   `v0.1-mvp`.
 
-HIL approval channel and a real Risk Classifier are explicitly deferred
-past this step — do not bundle them in.
+**Reusable pattern established by this milestone:** Claude Agent SDK was
+not integrated because it looked functional — it was *admitted* first,
+through Gate 0, then integrated. The same admission-before-integration
+pattern applies to any future trust-bearing component that can trigger
+real actions: OpenClaw (already parked as a candidate above), n8n, a
+real HIL delivery channel, MCP servers, or anything else added later.
 
-**Revised framing** (see "Newly discovered requirement gap" above): this
-integration is not the start of a full code orchestrator. It is the first
-standardized backend integration that a later multi-model deliberation
-layer will call into. The step itself is unchanged from what was agreed
-before the requirement gap was discovered; only its role in the larger
-picture is updated.
+HIL approval channel and a real Risk Classifier remain explicitly
+deferred past this milestone — do not bundle them in.
 
 ## How to start the next chat
 
