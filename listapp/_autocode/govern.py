@@ -13,7 +13,9 @@ import json
 import os
 import sys
 
-AUTOCODE_ENGINE_PATH = "/mnt/user-data/outputs/autocode/policy_engine"
+AUTOCODE_ENGINE_PATH = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "autocode", "policy_engine")
+)
 sys.path.insert(0, AUTOCODE_ENGINE_PATH)
 
 from can_use_tool_adapter import can_use_tool  # noqa: E402

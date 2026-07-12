@@ -1,0 +1,67 @@
+{
+  "ruleset_schema_version": "1.1.0",
+  "ruleset_version": "0.3.4",
+  "published_at": "2026-07-09T00:00:00Z",
+  "precedence": {
+    "effect_order": ["allow", "require_hil", "deny_until_changed", "deny_permanent"],
+    "default_effect_on_unknown_risk": "require_hil",
+    "default_effect_on_no_match": "require_hil"
+  },
+  "rules": [
+    {
+      "rule_id": "AUTH_CHANGES_REQUIRE_HIL",
+      "description": "Any write touching /auth/** at high or critical risk requires security review.",
+      "effect": "require_hil",
+      "approvable": true,
+      "required_approver_roles": ["security_reviewer"],
+      "condition": {
+        "action_types": ["file_write"],
+        "path_matches": ["/auth/**"],
+        "risk_tiers": ["high", "critical"]
+      }
+    },
+    {
+      "rule_id": "DELETE_AUDIT_LOG",
+      "description": "The audit log must never be deletable by any actor.",
+      "effect": "deny_permanent",
+      "approvable": false,
+      "required_approver_roles": [],
+      "condition": {
+        "action_types": ["file_delete"],
+        "path_matches": ["/audit_log/**", "/var/autocode/audit/**"]
+      }
+    },
+    {
+      "rule_id": "NO_PUSH_MAIN_WITHOUT_HIL",
+      "description": "Pushing to main or any release branch requires owner approval.",
+      "effect": "require_hil",
+      "approvable": true,
+      "required_approver_roles": ["owner"],
+      "condition": {
+        "action_types": ["git_push"],
+        "target_branches": ["main", "release/*"]
+      }
+    },
+    {
+      "rule_id": "DESTRUCTIVE_COMMAND_REQUIRES_HIL",
+      "description": "A run_command proposal classified as high or critical risk (e.g. destructive shell patterns) requires owner approval before execution.",
+      "effect": "require_hil",
+      "approvable": true,
+      "required_approver_roles": ["owner"],
+      "condition": {
+        "action_types": ["run_command"],
+        "risk_tiers": ["high", "critical"]
+      }
+    },
+    {
+      "rule_id": "READ_ONLY_ACTIONS_ALLOWED",
+      "description": "Reading files is always permitted, no path or branch restriction.",
+      "effect": "allow",
+      "approvable": false,
+      "required_approver_roles": [],
+      "condition": {
+        "action_types": ["file_read"]
+      }
+    }
+  ]
+}

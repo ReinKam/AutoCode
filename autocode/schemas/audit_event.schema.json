@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://autocode.dev/schemas/audit_event.schema.json",
+  "title": "AuditEventSchema",
+  "description": "A single entry in AutoCode's global, append-only, hash-chained audit log. Distinct from the PolicyDecision decision-chain: this chain is chronological and tamper-evident across the whole system, not per-proposal.",
+  "type": "object",
+  "required": [
+    "audit_event_id",
+    "event_type",
+    "event_payload_hash",
+    "previous_event_hash",
+    "event_hash",
+    "timestamp"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "audit_event_id": { "type": "string", "format": "uuid" },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "ACTION_PROPOSAL_CREATED",
+        "RISK_ASSESSMENT_CREATED",
+        "POLICY_DECISION_CREATED",
+        "HIL_DECISION_CREATED",
+        "EXECUTION_STARTED",
+        "EXECUTION_RESULT_RECORDED",
+        "VERIFICATION_RESULT_RECORDED",
+        "GIT_OPERATION_RECORDED",
+        "RULESET_PUBLISHED"
+      ]
+    },
+    "correlation": {
+      "type": "object",
+      "description": "Cross-references into the decision chain, for reconciling audit-chain order against per-proposal history.",
+      "additionalProperties": false,
+      "properties": {
+        "action_proposal_id": { "type": "string", "format": "uuid" },
+        "policy_decision_id": { "type": "string", "format": "uuid" },
+        "hil_decision_id": { "type": "string", "format": "uuid" }
+      }
+    },
+    "event_payload_hash": {
+      "type": "string",
+      "description": "sha256 of the full underlying object this event records (e.g. the PolicyDecision or HILDecision document)."
+    },
+    "previous_event_hash": {
+      "type": "string",
+      "description": "event_hash of the immediately preceding AuditEvent in the global chain. First event uses a fixed genesis value."
+    },
+    "event_hash": {
+      "type": "string",
+      "description": "sha256 over (previous_event_hash + event_payload_hash + event_type + timestamp). Any retroactive edit to any prior event invalidates every event_hash after it."
+    },
+    "timestamp": { "type": "string", "format": "date-time" }
+  }
+}

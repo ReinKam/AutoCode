@@ -25,13 +25,25 @@ jobs:
         run: |
           python3 admission/claude-agent-sdk/harness/test_0_10a_static_no_persisted_permissions.py
 
-      # Placeholder for when autocode/policy_engine's remaining modules and
-      # golden tests are migrated in — see README.md "Known gap". Do not
-      # remove this comment when adding real test invocations later; it is
-      # the reminder that this job intentionally does not yet run the
-      # golden suite because the suite isn't in this repo yet.
-      # - name: Run golden tests
-      #   run: bash run_all.sh
+      - name: Install listapp dependencies
+        run: |
+          pip install -r listapp/requirements.txt
+
+      - name: Run AutoCode core golden tests + demo, then listapp tests
+        run: |
+          bash run_all.sh
+        # This step is the permanent home for what was previously a
+        # placeholder (see PROVENANCE.md for the migration this replaced
+        # it as part of). It runs, on every push and pull request:
+        #   - 56 golden tests (precedence, rule matcher, canUseTool
+        #     adapter, TTL/capability) via autocode/run_all.sh
+        #   - the isolated end-to-end demo (6 scenarios, hash-chained
+        #     audit log verification)
+        #   - 4 listapp tests
+        # No secrets are required or used by this step. Checkout@v4 above
+        # already provides a fresh clone each run, so this doubles as the
+        # "fresh clone" verification the migration's PR checklist asked
+        # for — it does not need a separate, one-off manual step.
 
   verify-pinned-sdk-version:
     runs-on: ubuntu-latest
