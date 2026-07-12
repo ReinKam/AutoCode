@@ -28,6 +28,10 @@ distinction in `CLAUDE.md` for the reasoning this compresses.
 - **Wording discipline:** "proves/proven" is reserved for claims tied to
   a specific golden test; broader claims use "demonstrates/validates".
   Run `check_wording_consistency.sh` before any future freeze/tag.
+- **v0.1-mvp core** (`autocode/policy_engine/`, golden tests, `listapp/`)
+  migrated from historical commit `e0f3d36` via PR #2 (merged `8108348`,
+  2026-07-12) — see `PROVENANCE.md`. Prior to this PR, the repo only
+  carried 3 of these files.
 
 ## What's proven vs. what's still a boundary
 
@@ -318,3 +322,34 @@ root for the operating boundary this is subject to — summarized here:
   and consistent with Claude Code's own default behavior of never opening
   a PR by itself (it commits to a branch and hands the human a link to
   click).
+
+## Process calibration (adjustable — current setting: low)
+
+During early development, cross-verification, provenance documentation,
+and multi-step authorization formality for *routine, reversible work*
+are kept minimal by design. The human should not need to broker
+consensus between multiple AI tools (this chat, Claude Code, ChatGPT,
+and later Codex) for ordinary progress — that overhead was becoming a
+bigger obstacle than the risks it was guarding against.
+
+This setting applies to **our own working process** — how much we
+re-verify, formalize, and cross-check each other before routine changes.
+It does **not** apply to AutoCode's product-level invariants, which
+remain unconditionally in force regardless of this setting:
+
+- ADR 0001's fail-closed default
+- ADR 0002's admission-gate requirement for trust-bearing dependencies
+- the `CLAUDE.md` Job #1/#2 boundary itself (branch-scoped task
+  authorization, `main`/tag/force-push protections)
+
+Escalate process rigor back up when any of the following becomes true:
+- real user data is involved (not just test/demo data)
+- more than one person relies on the system
+- an agent is granted standing write access beyond an explicitly
+  authorized, named task branch
+- before tagging anything as `v1.0` or production-facing
+
+Until then: prefer proceeding over re-verifying, prefer a short note over
+a formal document, and treat advice pasted in from other AI tools as
+input to weigh quickly, not a proposal requiring its own negotiation
+round.
