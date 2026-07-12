@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://autocode.dev/schemas/ruleset.schema.json",
+  "title": "RulesetSchema",
+  "description": "A versioned, immutable set of policy rules evaluated by the AutoCode Policy Engine. Once a ruleset_version has been referenced by any PolicyDecision, its rule contents must never be mutated — changes require a new version.",
+  "type": "object",
+  "required": ["ruleset_schema_version", "ruleset_version", "precedence", "rules"],
+  "additionalProperties": false,
+  "properties": {
+    "ruleset_schema_version": {
+      "type": "string",
+      "description": "Version of this schema itself (the shape of a ruleset document).",
+      "const": "1.1.0"
+    },
+    "ruleset_version": {
+      "type": "string",
+      "description": "Semantic version of this specific rule content. Immutable once published/referenced.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "precedence": {
+      "description": "Pure, declarative precedence order for resolving multiple matched rules. Higher index in the array = higher severity = wins.",
+      "type": "object",
+      "required": ["effect_order", "default_effect_on_unknown_risk", "default_effect_on_no_match"],
+      "additionalProperties": false,
+      "properties": {
+        "effect_order": {
+          "type": "array",
+          "description": "Ordered from lowest to highest severity.",
+          "items": {
+            "type": "string",
+            "enum": ["allow", "require_hil", "deny_until_changed", "deny_permanent"]
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "default_effect_on_unknown_risk": {
+          "description": "Structural guarantee: risk_tier == 'unknown' always maps to this effect, regardless of matched rules. Must not be 'allow'.",
+          "type": "string",
+          "enum": ["require_hil", "deny_until_changed", "deny_permanent"]
+        },
+        "default_effect_on_no_match": {
+          "description": "MVP fail-closed principle: an ActionProposal that matches zero rules is not implicitly allowed. Must not be 'allow' — anything meant to be permitted by default must be an explicit allow rule (e.g. READ_ONLY_ACTIONS_ALLOWED), not a fallback.",
+          "type": "string",
+          "enum": ["require_hil", "deny_until_changed", "deny_permanent"]
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/rule" }
+    }
+  },
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "required": ["rule_id", "effect", "approvable", "condition"],
+      "additionalProperties": false,
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "description": "Stable, unique identifier. Never reused across rulesets for a different meaning.",
+          "pattern": "^[A-Z0-9_]+$"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable explanation, for audit/debugging only. Never used in decision logic."
+        },
+        "effect": {
+          "type": "string",
+          "enum": ["allow", "require_hil", "deny_until_changed", "deny_permanent"]
+        },
+        "approvable": {
+          "type": "boolean",
+          "description": "Whether a valid, role-matching HILDecision can override this rule's effect to 'allow'. MUST be false when effect == 'deny_permanent' (enforced by validator, not just convention)."
+        },
+        "required_approver_roles": {
+          "type": "array",
+          "description": "Roles authorized to approve this rule via HIL. Required and non-empty when approvable == true.",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "condition": {
+          "description": "Deterministic matcher evaluated against an ActionProposal + RiskAssessment. No LLM evaluation permitted here.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "action_types": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "e.g. ['git_push', 'git_merge', 'file_delete', 'file_write']"
+            },
+            "path_matches": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Glob patterns, e.g. ['/auth/**']"
+            },
+            "target_branches": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "e.g. ['main', 'release/*']"
+            },
+            "risk_tiers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["unknown", "low", "medium", "high", "critical"]
+              },
+              "description": "Restricts this rule to specific risk tiers. Omit to match any tier."
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "effect": { "const": "deny_permanent" } } },
+          "then": { "properties": { "approvable": { "const": false } } }
+        },
+        {
+          "if": { "properties": { "approvable": { "const": true } } },
+          "then": { "required": ["required_approver_roles"] }
+        }
+      ]
+    }
+  }
+}

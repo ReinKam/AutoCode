@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://autocode.dev/schemas/policy_decision.schema.json",
+  "title": "PolicyDecisionSchema",
+  "description": "The output of a single Policy Engine evaluation. Functions as a time-bound capability ticket: no ExecutionAdapter may act on an ActionProposal without a matching, unexpired, hash-valid PolicyDecision with decision == 'allow'.",
+  "type": "object",
+  "required": [
+    "policy_decision_id",
+    "policy_schema_version",
+    "policy_ruleset_version",
+    "risk_classifier_version",
+    "action_proposal_id",
+    "input_hash",
+    "pass",
+    "decision",
+    "risk_tier",
+    "matched_rules",
+    "reason_code",
+    "expires_at",
+    "decision_hash",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "policy_decision_id": { "type": "string", "format": "uuid" },
+    "policy_schema_version": {
+      "type": "string",
+      "description": "Version of this schema (the shape of a PolicyDecision document).",
+      "const": "1.0.0"
+    },
+    "policy_ruleset_version": {
+      "type": "string",
+      "description": "Which immutable RulesetSchema.ruleset_version was evaluated."
+    },
+    "risk_classifier_version": {
+      "type": "string",
+      "description": "Which version of the Risk Classifier produced the risk_tier used in this decision."
+    },
+    "action_proposal_id": { "type": "string", "format": "uuid" },
+    "input_hash": {
+      "type": "string",
+      "description": "sha256 of the exact ActionProposal payload this decision was issued for. ExecutionAdapter must re-verify this before acting."
+    },
+    "pass": {
+      "type": "string",
+      "enum": ["pre-risk", "post-risk"]
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["allow", "require_hil", "deny_until_changed", "deny_permanent"]
+    },
+    "risk_tier": {
+      "type": "string",
+      "enum": ["unknown", "low", "medium", "high", "critical"]
+    },
+    "matched_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule_id", "effect", "approvable", "overridden"],
+        "additionalProperties": false,
+        "properties": {
+          "rule_id": { "type": "string" },
+          "effect": {
+            "type": "string",
+            "enum": ["allow", "require_hil", "deny_until_changed", "deny_permanent"]
+          },
+          "approvable": { "type": "boolean" },
+          "overridden": {
+            "type": "boolean",
+            "description": "True if this rule's effect was overridden to 'allow' by a valid HILDecision."
+          }
+        }
+      }
+    },
+    "reason_code": {
+      "type": "string",
+      "description": "Machine-readable code, e.g. 'PROTECTED_BRANCH_OPERATION', 'HIL_APPROVED_HIGH_RISK_ACTION', 'HIL_REJECTED', 'UNKNOWN_RISK_TIER'."
+    },
+    "required_approvals": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Roles still required before this decision could become 'allow'. Empty once satisfied.",
+      "default": []
+    },
+    "hil_decision_ids": {
+      "type": "array",
+      "items": { "type": "string", "format": "uuid" },
+      "description": "HILDecisions consumed as input to this evaluation, if any.",
+      "default": []
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Hard expiry, always a concrete timestamp (deny_permanent uses a far-future sentinel rather than null, to keep 'is this ticket still valid' a single, uniform comparison everywhere downstream). On expiry, the Execution Adapter must refuse and the Policy Engine must be re-invoked to issue a fresh PolicyDecision — a HILDecision never extends an existing PolicyDecision's expiry, it only ever becomes input to a brand-new evaluation."
+    },
+    "previous_decision_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Links to the prior PolicyDecision for the same action_proposal_id, forming the logical decision chain (distinct from the audit hash-chain)."
+    },
+    "decision_hash": {
+      "type": "string",
+      "description": "sha256 over the canonical serialization of this decision's own content (excluding decision_hash itself), for tamper-evidence."
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}

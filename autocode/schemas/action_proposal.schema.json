@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://autocode.dev/schemas/action_proposal.schema.json",
+  "title": "ActionProposalSchema",
+  "description": "A single proposed action from an Execution Backend (Claude Agent SDK, Hermes, OpenClaw, ...). Backends may only ever produce proposals — never act directly. This document is what gets hashed, matched against rules, and evaluated by the Policy Engine.",
+  "type": "object",
+  "required": ["action_proposal_id", "action_type", "proposed_by", "paths", "created_at"],
+  "additionalProperties": false,
+  "properties": {
+    "action_proposal_id": { "type": "string", "format": "uuid" },
+    "action_type": {
+      "type": "string",
+      "description": "e.g. 'file_write', 'file_delete', 'git_push', 'git_merge', 'run_command', 'create_branch'."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable summary, for audit/UI only. Never used in matching or decision logic."
+    },
+    "proposed_by": {
+      "type": "string",
+      "description": "Identifier of the execution backend/adapter that produced this proposal, e.g. 'claude-agent-sdk', 'hermes', 'openclaw'."
+    },
+    "paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Filesystem paths this action reads/writes/deletes, if any. Empty array if not path-relevant.",
+      "default": []
+    },
+    "target_branch": {
+      "type": ["string", "null"],
+      "description": "Git branch this action targets, if any (e.g. for git_push, git_merge)."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Action-type-specific structured details (e.g. command string, diff summary, commit message). Free-form but must be canonically serializable.",
+      "default": {}
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}

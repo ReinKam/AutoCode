@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://autocode.dev/schemas/risk_assessment.schema.json",
+  "title": "RiskAssessmentSchema",
+  "description": "Output of the Risk Classifier for a single ActionProposal. Consumed by the post-risk Policy Engine pass and by the Rule Matcher's risk_tiers condition.",
+  "type": "object",
+  "required": ["risk_assessment_id", "action_proposal_id", "risk_tier", "risk_classifier_version", "created_at"],
+  "additionalProperties": false,
+  "properties": {
+    "risk_assessment_id": { "type": "string", "format": "uuid" },
+    "action_proposal_id": { "type": "string", "format": "uuid" },
+    "risk_tier": {
+      "type": "string",
+      "enum": ["unknown", "low", "medium", "high", "critical"]
+    },
+    "risk_classifier_version": { "type": "string" },
+    "signals": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Machine-readable signals that drove the tier, e.g. 'PATH_MATCHES_PROTECTED', 'DIFF_SIZE_LARGE'. For audit/debugging.",
+      "default": []
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}
