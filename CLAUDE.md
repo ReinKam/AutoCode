@@ -66,7 +66,7 @@ the task ends — do not leave a finished authorization marked `active`.
 
 | Branch | Task | Authorized | Status |
 |---|---|---|---|
-| `migration/v0.1-mvp-public-baseline` | Import the verified `v0.1-mvp` source from historical commit `e0f3d36`; add provenance and the historical note on the canonical, portable `govern.py`; run all 56 golden tests and 4 listapp tests; replace the `ci.yml` placeholder with permanent, secret-free execution of those tests; push the branch and report results. | 2026-07-11 | active |
+| `migration/v0.1-mvp-public-baseline` | Import the verified `v0.1-mvp` source from historical commit `e0f3d36`; add provenance and the historical note on the canonical, portable `govern.py`; run all 56 golden tests and 4 listapp tests; replace the `ci.yml` placeholder with permanent, secret-free execution of those tests; push the branch and report results. | 2026-07-11 | completed |
 
 ## Rule
 
